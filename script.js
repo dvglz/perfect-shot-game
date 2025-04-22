@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const config = {
         type: Phaser.CANVAS,
         width: 600,
-        height: 1100,
+        height: 900,
         parent: 'game-container',
         backgroundColor: '#242424',
         scene: { preload, create, update },
