@@ -1,6 +1,17 @@
 // script.js
 
 document.addEventListener('DOMContentLoaded', function () {
+
+    const gameContainer = document.getElementById('game-container');
+
+    function setGameContainerMaxHeight() {
+        const windowHeight = window.innerHeight;
+        gameContainer.style.maxHeight = `${windowHeight}px`;
+    }
+
+    setGameContainerMaxHeight();
+    window.addEventListener('resize', setGameContainerMaxHeight);
+
     const config = {
         type: Phaser.CANVAS,
         width: 600,
@@ -10,7 +21,12 @@ document.addEventListener('DOMContentLoaded', function () {
         scene: { preload, create, update },
         scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
     };
-    new Phaser.Game(config);
+
+    const game = new Phaser.Game(config);
+
+    if (game && game.scale) {
+       game.scale.refresh();
+    }
 
     // Globals
     const playerList = [
