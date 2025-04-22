@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Timed-Shot</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Special+Gothic+Expanded+One&display=swap');
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Full viewport height */
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        #game-container {
+            width: 100%; /* Take up available width */
+            max-width: 600px; /* Limit on larger screens */
+            height: 100%; /* Take up available height */
+            min-height: 700px; /* Limit on larger screens */
+            margin: auto; /* Center horizontally */
+            position: relative;
+        }
+
+        #game-container canvas {
+            display: block; /* Ensure canvas takes up full container */
+        }
+
+        /* Clutch Mode Glow */
+        .clutch-glow {
+            animation: clutchGlow 1s infinite alternate;
+        }
+
+        @keyframes clutchGlow {
+            from {
+                box-shadow: 0 0 20px red;
+            }
+            to {
+                box-shadow: 0 0 40px red;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
