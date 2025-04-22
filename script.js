@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const config = {
         type: Phaser.CANVAS,
         width: 600,
-        height: 900,
+        height: 1000,
         parent: 'game-container',
         backgroundColor: '#242424',
         scene: { preload, create, update },
@@ -178,14 +178,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Court graphics
         backboard = this.add.image(config.width/2,200,'backboard').setScale(0.6).setDepth(0.5); // Added depth
         ball = this.add.circle(config.width/2,700,45,0xffa500).setVisible(false).setDepth(0.6); // Added depth
-        playerSprite = this.add.sprite(config.width/2,920,'playerSilhouette1').setScale(0.9).setDepth(0.7); // Added depth
+        playerSprite = this.add.sprite(config.width/2,840,'playerSilhouette1').setScale(0.9).setDepth(0.7); // Added depth
 
         // Points & messages
         pointsText = this.add.text(config.width/2,config.height/2-80,'',{fontSize:'48px',fill:'#fff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:config.width-40}}).setOrigin(0.5).setDepth(2000).setAlpha(0);
         messageText= this.add.text(config.width/2,config.height/2-20,'',{fontSize:'36px',fill:'#fff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:config.width-40}}).setOrigin(0.5).setDepth(2000).setAlpha(0);
 
         // Shot meter
-        const meterY=config.height-150;
+        const meterY=config.height-200;
         shotMeterBar = this.add.rectangle(config.width/2,meterY,365,32,0xFFFFFF).setOrigin(0.5).setStrokeStyle(2,0x000000).setDepth(1); // Added depth
         shotMeterBar.meterWidth=365;
         shotMeterPointer=this.add.sprite(config.width/2,meterY-14,'arrow').setOrigin(0.5,1).setDepth(1.1); // Added depth
@@ -221,10 +221,10 @@ document.addEventListener('DOMContentLoaded', function () {
         const shootBtn=this.add.graphics({fillStyle:{color:0xF44336}}).setDepth(1);
         // Изначально: fillRoundedRect(config.width/2-152.5,config.height-150,305,75,10)
         // Новое: fillRoundedRect(config.width/2-152.5,config.height-100,305,75,10) // <-- Сдвинуто на 50px ниже
-        shootBtn.fillRoundedRect(config.width/2-152.5,config.height-100,305,75,10).setInteractive(new Phaser.Geom.Rectangle(config.width/2-152.5,config.height-100,305,75),Phaser.Geom.Rectangle.Contains).on('pointerdown',shoot,this);
+        shootBtn.fillRoundedRect(config.width/2-152.5,config.height-150,305,75,10).setInteractive(new Phaser.Geom.Rectangle(config.width/2-152.5,config.height-100,305,75),Phaser.Geom.Rectangle.Contains).on('pointerdown',shoot,this);
         // Изначально: this.add.text(config.width/2,config.height-113,'SHOOT', ... )
         // Новое: this.add.text(config.width/2,config.height-63,'SHOOT', ... ) // <-- Сдвинуто на 50px ниже (113 - 50 = 63)
-        this.add.text(config.width/2,config.height-63,'SHOOT',{fontSize:'45px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.1);
+        this.add.text(config.width/2,config.height-113,'SHOOT',{fontSize:'45px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.1);
 
         restartGame=()=>{skipIntro=true;this.scene.restart();};
         startNewRound.call(this); // This sets up the first player/zones even before 'started' is true
@@ -265,7 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
             case 'low':           perfectW = 15; goodW = 45;  break;
             case 'extremely low': perfectW = 5;  goodW = 20;  break;
         }
-        const y = config.height - 150; // Позиция Y такая же, как у шкалы броска
+        const y = config.height - 200; // Позиция Y такая же, как у шкалы броска
         // Добавляем .setDepth(1.2)
         accuracyZonePerfect = this.add.rectangle(config.width/2, y, perfectW, 32, 0x006D00)
             .setOrigin(0.5)
@@ -282,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function shoot() {
         if (gameEnded || ball.visible || !started) return;
     
-        this.tweens.add({ targets: playerSprite, y: 880, duration: 100, ease: 'Power2', yoyo: true });
+        this.tweens.add({ targets: playerSprite, y: 800, duration: 100, ease: 'Power2', yoyo: true });
     
         ball.x = playerSprite.x;
         ball.y = playerSprite.y;
