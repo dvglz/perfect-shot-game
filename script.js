@@ -1,14 +1,12 @@
 // script.js
 
 document.addEventListener('DOMContentLoaded', function () {
-    
+
     const gameContainer = document.getElementById('game-container');
 
     function setGameContainerMaxHeight() {
         const windowHeight = window.innerHeight;
-        // Set max-height on the container based on actual window height
         gameContainer.style.maxHeight = `${windowHeight}px`;
-        // console.log(`Set game-container max-height to ${windowHeight}px`); // Optional debug
     }
 
     setGameContainerMaxHeight();
@@ -17,17 +15,20 @@ document.addEventListener('DOMContentLoaded', function () {
     const config = {
         type: Phaser.CANVAS,
         width: 600,
-        height: 1000,
+        height: 1000, // Internal game height
         parent: 'game-container',
         backgroundColor: '#242424',
         scene: { preload, create, update },
-        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_HORIZONTALLY }
+        scale: {
+            mode: Phaser.Scale.FIT,
+            autoCenter: Phaser.Scale.CENTER_HORIZONTALLY // Align to top vertically, center horizontally
+        }
     };
 
     const game = new Phaser.Game(config);
 
     if (game && game.scale) {
-        game.scale.refresh();
+       game.scale.refresh();
     }
 
     // Globals
@@ -71,6 +72,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let timerText, scoreText, streakText;
     let backboard, ball, playerSprite;
     let shotMeterBar, shotMeterPointer;
+    const meterBarWidth = 365;
+    const meterBarHeight = 32;
     let shotMeterDirection = 1;
     let baseMeterSpeed;
     let accuracyZonePerfect, accuracyZoneGood;
@@ -88,59 +91,43 @@ document.addEventListener('DOMContentLoaded', function () {
     let overlayGroup = [];
     let shotResultMessage = '';
 
-     // Добавьте ссылки на элементы лоадера в Globals (или получите их в preload/create)
-     let loaderElement;
-     let loaderBar;
-     let loaderPercentText;
- 
-     function preload() {
-        console.log('*** Phaser preload() running ***');
-    
-        // Получаем элементы лоадера из DOM
+    const playerBaseDistanceFromBottom = 330;
+    const playerJumpHeight = 5;
+
+    let loaderElement;
+    let loaderBar;
+    let loaderPercentText;
+
+
+    function preload() {
         loaderElement = document.getElementById('loader');
         loaderBar = document.getElementById('loader-bar');
-        loaderPercentText = document.getElementById('loader-percent'); // Этот элемент HTML
-    
-        const gameCanvas = document.querySelector('#game-container canvas'); // Получаем канвас
-    
-        // Скрываем канвас в начале preload (если CSS не сработал или на всякий случай)
-         if (gameCanvas) {
-            gameCanvas.style.visibility = 'hidden';
-         }
-         // Показываем лоадер
-         if (loaderElement) {
-            // Используем flex, как в CSS, чтобы лоадер был видим
-            loaderElement.style.display = 'flex';
-         }
-    
-    
-        // Добавляем обработчики событий загрузки Phaser
+        loaderPercentText = document.getElementById('loader-percent');
+
+        const gameCanvas = document.querySelector('#game-container canvas');
+
+        if (gameCanvas) {
+           gameCanvas.style.visibility = 'hidden';
+        }
+        if (loaderElement) {
+           loaderElement.style.display = 'flex';
+        }
+
         this.load.on('progress', function (value) {
-            // value - это число от 0 до 1
             const percent = Math.round(value * 100) + '%';
-    
-            if (loaderBar) {
-                loaderBar.style.width = percent;
-            }
-            if (loaderPercentText) {
-                // ИСПОЛЬЗУЕМ textContent для HTML-элемента
-                loaderPercentText.textContent = percent; // <-- ИСПРАВЛЕНО ЗДЕСЬ
-            }
+            if (loaderBar) loaderBar.style.width = percent;
+            if (loaderPercentText) loaderPercentText.textContent = percent;
         });
-    
+
         this.load.on('complete', function () {
-            console.log('*** Phaser preload() complete ***');
-            // Загрузка завершена, скрываем лоадер и показываем канвас
              if (loaderElement) {
-                loaderElement.style.display = 'none'; // Скрываем лоадер
+                loaderElement.style.display = 'none';
              }
              if (gameCanvas) {
-                gameCanvas.style.visibility = 'visible'; // Показываем канвас
+                gameCanvas.style.visibility = 'visible';
              }
         });
-    
-    
-        // --- ВАШИ ЗАГРУЖАЕМЫЕ АССЕТЫ ---
+
         this.load.image('backboard', 'images/backboard.png');
         this.load.image('arrow', 'images/arrow.png');
         this.load.image('playerSilhouette1', 'images/playerSilhouette1.png');
@@ -148,59 +135,58 @@ document.addEventListener('DOMContentLoaded', function () {
             const key = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             this.load.image(key, `images/players/${p.image}`);
         });
-        // --- КОНЕЦ ВАШИХ ЗАГРУЖАЕМЫХ АССЕТОВ ---
-    } 
+    }
 
     function create() {
-        console.log('*** Phaser create() running ***');
-        console.log('Canvas element:', this.game.canvas);
-        console.log('Canvas resolution:', this.game.canvas.width, '×', this.game.canvas.height);
         if (loaderElement) {
-            loaderElement.style.display = 'none';
-         }
-         const gameCanvas = document.querySelector('#game-container canvas');
-         if (gameCanvas) {
-            gameCanvas.style.visibility = 'visible';
-         }
+           loaderElement.style.display = 'none';
+        }
+        const gameCanvas = document.querySelector('#game-container canvas');
+        if (gameCanvas) {
+           gameCanvas.style.visibility = 'visible';
+        }
 
-        // UI Bar and info
-        this.add.rectangle(0, 0, config.width, config.height, 0x242424).setOrigin(0); // Actual game background - should draw over the first debug red rect
-        infoBarGraphics = this.add.graphics().fillStyle(0x333333,1).fillRect(0,0,config.width,80).setDepth(1); // Added depth
+        this.add.rectangle(0, 0, config.width, config.height, 0x242424).setOrigin(0).setDepth(0);
+
+        infoBarGraphics = this.add.graphics().fillStyle(0x333333,1).fillRect(0,0,config.width,80).setDepth(1);
         const barStyle = { fontSize:'32px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace',align:'center' };
-        scoreText = this.add.text(config.width*0.1,20,'0',barStyle).setOrigin(0.5).setDepth(1); // Added depth
-        this.add.text(config.width*0.1,50,'Score',{fontSize:'16px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1); // Added depth
-        timerText = this.add.text(config.width/2,20,':60',barStyle).setOrigin(0.5).setDepth(1); // Added depth
-        this.add.text(config.width/2,50,'Time',{fontSize:'16px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1); // Added depth
-        streakText=this.add.text(config.width*0.9,20,'x0',barStyle).setOrigin(0.5).setDepth(1); // Added depth
-        this.add.text(config.width*0.9,50,'Streak',{fontSize:'16px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1); // Added depth
+        scoreText = this.add.text(config.width*0.1,20,'0',barStyle).setOrigin(0.5).setDepth(1.1);
+        this.add.text(config.width*0.1,50,'Score',{fontSize:'16px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.1);
+        timerText = this.add.text(config.width/2,20,':60',barStyle).setOrigin(0.5).setDepth(1.1);
+        this.add.text(config.width/2,50,'Time',{fontSize:'16px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.1);
+        streakText=this.add.text(config.width*0.9,20,'x0',barStyle).setOrigin(0.5).setDepth(1.1);
+        this.add.text(config.width*0.9,50,'Streak',{fontSize:'16px',fill:'#eee',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.1);
         updateInfoBar.call(this);
 
-        // Court graphics
-        backboard = this.add.image(config.width/2,200,'backboard').setScale(0.6).setDepth(0.5); // Added depth
-        ball = this.add.circle(config.width/2,700,45,0xffa500).setVisible(false).setDepth(0.6); // Added depth
-        playerSprite = this.add.sprite(config.width/2,840,'playerSilhouette1').setScale(0.9).setDepth(0.7); // Added depth
+        backboard = this.add.image(config.width/2,200,'backboard').setScale(0.5).setDepth(0.5);
+        ball = this.add.circle(config.width/2,700,35,0xffa500).setVisible(false).setDepth(0.6);
 
-        // Points & messages
+        const playerBaseY = config.height - playerBaseDistanceFromBottom;
+        playerSprite = this.add.sprite(config.width/2, playerBaseY,'playerSilhouette1').setScale(0.4).setDepth(0.7);
+
         pointsText = this.add.text(config.width/2,config.height/2-80,'',{fontSize:'48px',fill:'#fff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:config.width-40}}).setOrigin(0.5).setDepth(2000).setAlpha(0);
         messageText= this.add.text(config.width/2,config.height/2-20,'',{fontSize:'36px',fill:'#fff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:config.width-40}}).setOrigin(0.5).setDepth(2000).setAlpha(0);
 
-        // Shot meter
-        const meterY=config.height-200;
-        shotMeterBar = this.add.rectangle(config.width/2,meterY,365,32,0xFFFFFF).setOrigin(0.5).setStrokeStyle(2,0x000000).setDepth(1); // Added depth
-        shotMeterBar.meterWidth=365;
-        shotMeterPointer=this.add.sprite(config.width/2,meterY-14,'arrow').setOrigin(0.5,1).setDepth(1.1); // Added depth
+        const meterY=config.height-150;
+        shotMeterBar = this.add.rectangle(config.width/2, meterY, meterBarWidth, meterBarHeight, 0xFFFFFF).setOrigin(0.5).setStrokeStyle(2,0x000000).setDepth(1.1);
+        shotMeterBar.meterWidth = meterBarWidth;
+        shotMeterPointer=this.add.sprite(config.width/2, meterY - meterBarHeight/2 - 2,'arrow').setOrigin(0.5,1).setDepth(1.2);
 
-        // Countdown
         this.time.addEvent({delay:1000,callback:countdown,callbackScope:this,loop:true});
 
-        // Intro overlay - UNCOMMENT THIS BLOCK
+        this.input.keyboard.on('keydown-ENTER', () => {
+            started = true;
+            overlayGroup.forEach(o => o.destroy());
+            overlayGroup = [];
+        });
+
         if (!skipIntro) {
-            const bg=this.add.rectangle(0,0,config.width,config.height,0x000000,0.85).setOrigin(0).setDepth(10000); // Increased depth
+            const bg=this.add.rectangle(0,0,config.width,config.height,0x000000,0.85).setOrigin(0).setDepth(10000);
             overlayGroup=[bg];
             const title=this.add.text(config.width/2,150,'Perfect Shot',{fontSize:'64px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center'}).setOrigin(0.5).setDepth(10001);
             const rules=[
                 '• Tap or press SPACE when the arrow is in the green zone.',
-                '• Green=perfect, light green=good, red=miss.', // ADDED COMMA HERE
+                '• Green=perfect, light green=good, red=miss.',
                 '• Score as many points as you can in 60 seconds!'
             ];
             const rulesText=this.add.text(config.width/2,300,rules.join('\n'),{fontSize:'24px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:500}}).setOrigin(0.5).setDepth(10001);
@@ -208,91 +194,129 @@ document.addEventListener('DOMContentLoaded', function () {
             btn.fillRoundedRect(config.width/2-152.5,500,305,75,10).setInteractive(new Phaser.Geom.Rectangle(config.width/2-152.5,500,305,75),Phaser.Geom.Rectangle.Contains).on('pointerdown',()=>{started=true;overlayGroup.forEach(o=>o.destroy());overlayGroup=[];});
             const startLabel=this.add.text(config.width/2,540,'START',{fontSize:'45px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(10001);
             overlayGroup.push(title,rulesText,btn,startLabel);
-        } else { // UNCOMMENT THIS LINE
-            started=true; // UNCOMMENT THIS LINE
-            // Ensure overlay elements don't exist if skipping intro
+        } else {
+            started = true;
             overlayGroup.forEach(o => o.destroy());
             overlayGroup = [];
-        } // UNCOMMENT THIS LINE
+        }
+
+        const shootButtonWidth = meterBarWidth;
+        const shootButtonHeight = 75;
+        const buttonMeterGap = 20;
+        const shootButtonY = meterY + meterBarHeight / 2 + buttonMeterGap; // Y для ВЕРХНЕГО края
+        const shootButtonX_LeftEdge = config.width / 2 - shootButtonWidth / 2; // X для ЛЕВОГО края
+
+        // Создаем графику кнопки
+        const shootBtnGraphic=this.add.graphics({fillStyle:{color:0xF44336}}).setDepth(1.3);
+        shootBtnGraphic.fillRoundedRect(shootButtonX_LeftEdge, shootButtonY, shootButtonWidth, shootButtonHeight, 10);
+
+        // Создаем текстовый объект кнопки
+        const shootTextY = shootButtonY + shootButtonHeight / 2; // Центр текста по Y
+        const shootText = this.add.text(config.width/2, shootTextY,'SHOOT',{fontSize:'45px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.4);
+
+        // >>> КОРРЕКТИРОВКА: ДЕЛАЕМ ИНТЕРАКТИВНУЮ ОБЛАСТЬ БОЛЬШЕ <<<
+        const interactiveAreaPadding = 15; // Добавляем по 15px с каждой стороны (30px всего к ширине/высоте)
+        const interactiveAreaX = shootButtonX_LeftEdge - interactiveAreaPadding;
+        const interactiveAreaY = shootButtonY - interactiveAreaPadding;
+        const interactiveAreaWidth = shootButtonWidth + interactiveAreaPadding * 2;
+        const interactiveAreaHeight = shootButtonHeight + interactiveAreaPadding * 2;
 
 
-        // Controls
-        this.input.keyboard.on('keydown-SPACE',shoot,this);
-        const shootBtn=this.add.graphics({fillStyle:{color:0xF44336}}).setDepth(1);
-        // Изначально: fillRoundedRect(config.width/2-152.5,config.height-150,305,75,10)
-        // Новое: fillRoundedRect(config.width/2-152.5,config.height-100,305,75,10) // <-- Сдвинуто на 50px ниже
-        shootBtn.fillRoundedRect(config.width/2-152.5,config.height-150,305,75,10).setInteractive(new Phaser.Geom.Rectangle(config.width/2-152.5,config.height-100,305,75),Phaser.Geom.Rectangle.Contains).on('pointerdown',shoot,this);
-        // Изначально: this.add.text(config.width/2,config.height-113,'SHOOT', ... )
-        // Новое: this.add.text(config.width/2,config.height-63,'SHOOT', ... ) // <-- Сдвинуто на 50px ниже (113 - 50 = 63)
-        this.add.text(config.width/2,config.height-113,'SHOOT',{fontSize:'45px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.1);
+        const shootBtnInteractiveArea = this.add.rectangle(
+            interactiveAreaX, // Используем скорректированный X верхнего левого угла
+            interactiveAreaY,          // Используем скорректированный Y верхнего левого угла
+            interactiveAreaWidth,   // Используем увеличенную ширину
+            interactiveAreaHeight,  // Используем увеличенную высоту
+            0xffffff,
+            0
+        )
+        .setOrigin(0, 0) // Origin (0,0) соответствует X/Y как верхнему левому углу
+        .setDepth(1.5) // Глубина выше графики и текста кнопки, чтобы быть "сверху" для кликов
+        .setInteractive()
+        .on('pointerdown', function() {
+            shoot.call(this); // 'this' внутри обработчика - это сцена
+        }, this); // Передаем контекст сцены ('this')
+
+        // >>> КОНЕЦ КОРРЕКТИРОВКИ ИНТЕРАКТИВНОЙ ОБЛАСТИ <<<
+
 
         restartGame=()=>{skipIntro=true;this.scene.restart();};
-        startNewRound.call(this); // This sets up the first player/zones even before 'started' is true
+        startNewRound.call(this);
     }
 
     function update(){
         if(!started||gameEnded)return;
-        const speed=baseMeterSpeed*(isClutchMode?2.8:1.8);
+        const speed=baseMeterSpeed*(isClutchMode?2.0:1.2);
         shotMeterPointer.x+=shotMeterDirection*speed;
-        const half=shotMeterBar.meterWidth/2;
-        if(shotMeterPointer.x>=shotMeterBar.x+half||shotMeterPointer.x<=shotMeterBar.x-half)shotMeterDirection*=-1;
-        shotMeterPointer.x=Phaser.Math.Clamp(shotMeterPointer.x,shotMeterBar.x-half,shotMeterBar.x+half);
-        shotMeterPointer.y=shotMeterBar.y-14;
+        const half=meterBarWidth/2;
+        const meterCenterX = shotMeterBar.x;
+        if(shotMeterPointer.x>=meterCenterX+half||shotMeterPointer.x<=meterCenterX-half)shotMeterDirection*=-1;
+        shotMeterPointer.x=Phaser.Math.Clamp(shotMeterPointer.x,meterCenterX-half,meterCenterX+half);
     }
 
     function startNewRound(){
         ball.setVisible(false);
-        if(!playerList.length)return;
+        if(!playerList.length)return; // Should not happen if game state is managed correctly, but good safeguard
         currentPlayer=Phaser.Utils.Array.GetRandom(playerList);
         baseMeterSpeed=Phaser.Math.FloatBetween(2.7,3.3)*1.25;
         const key=currentPlayer.name.toLowerCase().replace(/[^a-z0-9]/g,'');
         playerSprite.setTexture(this.textures.exists(key)?key:'playerSilhouette1');
-        updateAccuracyZones.call(this,currentPlayer);
+        updateAccuracyZones.call(this,currentPlayer); // Ensure zones are created/updated
         if(!isClutchMode&&canStartClutch&&!justExitedClutch&&Phaser.Math.Between(1,100)<=15)startClutchMode.call(this);
         justExitedClutch=false;
     }
 
     function updateAccuracyZones(player) {
-        // Уничтожаем старые зоны, если они существуют
         if (accuracyZonePerfect) accuracyZonePerfect.destroy();
         if (accuracyZoneGood)    accuracyZoneGood.destroy();
-    
+
         let perfectW = 20, goodW = 60;
         switch (player.accuracy) {
-            case 'perfect':       perfectW = 40; goodW = 120; break;
-            case 'high':          perfectW = 30; goodW = 100; break;
-            case 'medium':        perfectW = 20; goodW = 60;  break;
-            case 'low':           perfectW = 15; goodW = 45;  break;
-            case 'extremely low': perfectW = 5;  goodW = 20;  break;
+            case 'perfect': perfectW = 40; goodW = 120; break;
+            case 'high': perfectW = 30; goodW = 100; break;
+            case 'medium': perfectW = 20; goodW = 60; break;
+            case 'low': perfectW = 15; goodW = 45; break;
+            case 'extremely low': perfectW = 5; goodW = 20; break;
         }
-        const y = config.height - 200; // Позиция Y такая же, как у шкалы броска
-        // Добавляем .setDepth(1.2)
-        accuracyZonePerfect = this.add.rectangle(config.width/2, y, perfectW, 32, 0x006D00)
+
+        const meterY = config.height - 150; // Y position for the zones (matches meter bar Y)
+
+        // 0x00FF00 – bright green, alpha 0.8
+        accuracyZonePerfect = this.add.rectangle(config.width/2, meterY, perfectW, meterBarHeight, 0x00FF00)
             .setOrigin(0.5)
-            .setAlpha(1)
-            .setDepth(1.2); // <-- Добавлено
-    
-        // Добавляем .setDepth(1.2)
-        accuracyZoneGood = this.add.rectangle(config.width/2, y, goodW, 32, 0x006D00)
+            .setAlpha(0.8)
+            .setDepth(1.2); // Zone depth 1.2
+
+        // 0x88FF88 – light green, alpha 0.6
+        accuracyZoneGood = this.add.rectangle(config.width/2, meterY, goodW, meterBarHeight, 0x88FF88)
             .setOrigin(0.5)
-            .setAlpha(0.4)
-            .setDepth(1.2); // <-- Добавлено
+            .setAlpha(0.6)
+            .setDepth(1.2); // Zone depth 1.2
     }
 
     function shoot() {
-        if (gameEnded || ball.visible || !started) return;
-    
-        this.tweens.add({ targets: playerSprite, y: 800, duration: 100, ease: 'Power2', yoyo: true });
-    
+        console.log('SHOOT button pressed or SPACE key down'); // Добавьте этот лог
+    if (gameEnded || ball.visible || !started) {
+        console.log('Shoot blocked! Conditions:', {gameEnded, ballVisible: ball.visible, started}); // Добавьте этот лог
+        return;
+    }
+
+        const playerBaseY = config.height - playerBaseDistanceFromBottom;
+        this.tweens.add({
+            targets: playerSprite,
+            y: playerBaseY - playerJumpHeight,
+            duration: 100,
+            ease: 'Power2',
+            yoyo: true
+        });
+
         ball.x = playerSprite.x;
         ball.y = playerSprite.y;
         ball.setVisible(true);
-    
-        // applyMeterOnTop.call(this); // Эту строку убрали, как обсуждали
-    
+
         const accuracy = getAccuracy.call(this);
         const miss = accuracy === 'miss';
-    
+
         let msg;
         if (isClutchMode && miss) msg = 'CLUTCH RUINED';
         else if (isClutchMode && accuracy === 'perfect') msg = 'CLUTCH SAVED';
@@ -301,141 +325,243 @@ document.addEventListener('DOMContentLoaded', function () {
         else if (accuracy === 'lucky') msg = 'LUCKY ONE!';
         else msg = 'GOOD';
         shotResultMessage = msg;
-    
+
         let targetX, targetY, duration;
-        const baseDuration = 400; // Базовая длительность полета
+        const baseDuration = 400;
         const hoopCenterX = config.width / 2;
-        const hoopCenterY = backboard.y - 30; // Центр кольца примерно здесь
-    
+        const hoopCenterY = backboard.y - 30;
+        const hoopZoneRadius = 40; // Radius around hoop center miss should avoid
+
         if (!miss) {
-            // УСПЕШНЫЙ БРОСОК (Perfect, Lucky, Good) - летит в кольцо
-            targetX = hoopCenterX + (shotMeterPointer.x - config.width / 2) * 0.05; // Небольшое горизонтальное отклонение от точности при броске
+            targetX = hoopCenterX + (shotMeterPointer.x - config.width / 2) * 0.05;
             targetY = hoopCenterY;
             duration = baseDuration;
-            // Добавляем небольшой "изгиб" к траектории для лучшего вида
-            // Phaser's standard tweens are linear in each axis. For a curved path,
-            // we could use Path objects or separate tweens/physics.
-            // For now, let's keep it simple with slightly adjusted targetX/Y.
-            // The current linear tween looks okay for a quick shot.
         } else {
-            // ПРОМАХ - Рандомная траектория
-            const missType = Phaser.Math.RND.integerInRange(1, 4); // 1: Короткий, 2: Длинный, 3: В сторону, 4: В щит
-            duration = baseDuration + Phaser.Math.RND.integerInRange(-50, 100); // Немного варьируем длительность
-    
+            const missType = Phaser.Math.RND.integerInRange(1, 4); // 1: Short, 2: Long, 3: Side, 4: Backboard
+            duration = baseDuration + Phaser.Math.RND.integerInRange(-50, 100);
+
             switch (missType) {
-                case 1: // Короткий / В передний край
-                    targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-30, 30);
-                    targetY = hoopCenterY + Phaser.Math.RND.integerInRange(40, 80); // Не долетает, ниже кольца
+                case 1: // Short / Under hoop
+                    targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-60, 60);
+                    targetY = hoopCenterY + Phaser.Math.RND.integerInRange(hoopZoneRadius, 100);
                     break;
-                case 2: // Длинный / Перелет
-                    targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-50, 50);
-                    targetY = hoopCenterY - Phaser.Math.RND.integerInRange(50, 100); // Перелетает, выше щита
+                case 2: // Long / Overshoot
+                    targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-80, 80);
+                    targetY = hoopCenterY - Phaser.Math.RND.integerInRange(hoopZoneRadius + 20, 150);
                     break;
-                case 3: // В сторону (мимо кольца)
-                    const side = Phaser.Math.RND.pick([-1, 1]); // -1 для левой стороны, 1 для правой
-                    targetX = hoopCenterX + side * Phaser.Math.RND.integerInRange(70, 150); // Значительное смещение влево/вправо
-                    targetY = hoopCenterY + Phaser.Math.RND.integerInRange(-20, 20); // Примерно на высоте кольца
+                case 3: // Wide (side miss)
+                    const side = Phaser.Math.RND.pick([-1, 1]);
+                    targetX = hoopCenterX + side * Phaser.Math.RND.integerInRange(hoopZoneRadius * 1.5, 200);
+                    targetY = hoopCenterY + Phaser.Math.RND.integerInRange(-20, 20);
                     break;
-                case 4: // В щит (где-то в стороне)
-                    targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-100, 100); // В любой точке по ширине щита
-                    targetY = backboard.y + Phaser.Math.RND.integerInRange(-50, 50); // В любой точке по высоте щита
-                     // Убедимся, что не попали случайно в кольцо
-                    if (Math.abs(targetX - hoopCenterX) < 50 && Math.abs(targetY - hoopCenterY) < 50) {
-                         // Если слишком близко к кольцу, сдвинем немного
-                         targetX += (targetX > hoopCenterX ? 1 : -1) * 60;
-                    }
+                case 4: // Backboard miss (away from hoop)
+                    let attempts = 0;
+                    let distToHoopCenter;
+                    do {
+                        targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-120, 120);
+                        targetY = backboard.y + Phaser.Math.RND.integerInRange(-60, 60);
+
+                        const dx = targetX - hoopCenterX;
+                        const dy = targetY - hoopCenterY;
+                        distToHoopCenter = Math.sqrt(dx * dx + dy * dy);
+
+                        attempts++;
+                        if (attempts > 100) { break; }
+                    } while (distToHoopCenter < hoopZoneRadius);
                     break;
             }
-             // Для промахов можно добавить легкую вариацию начальной X позиции,
-             // чтобы бросок не всегда выходил строго из центра игрока.
-             // Например: ball.x += Phaser.Math.RND.integerInRange(-5, 5);
         }
-    
-    
-        // Start the ball animation tween
+
         this.tweens.add({
             targets: ball,
-            x: targetX, // Используем вычисленные targetX
-            y: targetY, // Используем вычисленные targetY
+            x: targetX,
+            y: targetY,
             duration: duration,
-            ease: 'Linear', // Для разных промахов можно использовать Linear или Power1/2,
-                             // экспериментируйте для лучшего ощущения
+            ease: 'Linear',
             onComplete: () => {
-                // Анимация полета завершена
                 ball.setVisible(false);
-    
-                // Обновляем счет и показываем сообщение/очки
                 showPointsAndMessage.call(this, accuracy);
-    
-                // Обновляем стрик
+
                 if (!miss) {
                     madeShotsInRow++;
                 } else {
-                    madeShotsInRow = 0; // Промах сбрасывает стрик
+                    madeShotsInRow = 0;
                 }
-                updateInfoBar.call(this); // Обновляем отображение стрика
-    
-                // Обрабатываем конец режима Clutch
+                updateInfoBar.call(this);
+
                 if (isClutchMode) {
-                   endClutchMode.call(this); // Завершаем режим Clutch
-                   // После завершения Clutch, независимо от результата броска в Clutch,
-                   // начинаем новый раунд с новым игроком.
+                   endClutchMode.call(this);
                    startNewRound.call(this);
                 } else if (!miss) {
-                    // Вне режима Clutch, новый раунд с новым игроком начинаем только при успешном попадании.
                     startNewRound.call(this);
                 }
-                // При промахе вне режима Clutch, startNewRound не вызывается,
-                // игрок остается тем же, и игрок может бросить снова.
             }
         });
     }
 
-// 3) Синхрон + быстрое исчезновение через 200 мс
-function showPointsAndMessage(accuracy) {
-    // сразу убиваем любые висящие твины
-    this.tweens.killTweensOf(pointsText);
-    this.tweens.killTweensOf(messageText);
+    function showPointsAndMessage(accuracy) {
+        this.tweens.killTweensOf(pointsText);
+        this.tweens.killTweensOf(messageText);
 
-    // вычисляем pts и цвет
-    let pts, color;
-    if (isClutchMode) {
-        if (accuracy === 'perfect') pts = +20,   color = '#00FF00';
-        else if (accuracy === 'miss')  pts = -20, color = '#FF0000';
-        else                           pts = +3,  color = '#CCFFCC';
-    } else {
-        if (accuracy === 'perfect')     pts = +6,  color = '#00FF00';
-        else if (accuracy === 'lucky')  pts = +3,  color = '#CCFFCC';
-        else if (accuracy === 'good')   pts = +3,  color = '#CCFFCC';
-        else                            pts = -1,  color = '#FF0000';
+        let pts, color;
+        if (isClutchMode) {
+            if (accuracy === 'perfect') pts = +20,   color = '#00FF00';
+            else if (accuracy === 'miss')  pts = -20, color = '#FF0000';
+            else                           pts = +3,  color = '#CCFFCC';
+        } else {
+            if (accuracy === 'perfect')     pts = +6,  color = '#00FF00';
+            else if (accuracy === 'lucky')  pts = +3,  color = '#CCFFCC';
+            else if (accuracy === 'good')   pts = +3,  color = '#CCFFCC';
+            else                            pts = -1,  color = '#FF0000';
+        }
+        score += pts;
+        updateInfoBar.call(this);
+
+        pointsText.setText((pts > 0 ? '+' : '') + pts)
+                  .setFill(color)
+                  .setAlpha(1);
+        messageText.setText(shotResultMessage)
+                   .setFill(color)
+                   .setAlpha(1);
+
+        this.tweens.add({
+            targets: [pointsText, messageText],
+            alpha: 0,
+            duration: 200,
+            delay: 200
+        });
     }
-    score += pts;
-    updateInfoBar.call(this);
 
-    // показываем оба сразу
-    pointsText.setText((pts > 0 ? '+' : '') + pts)
-              .setFill(color)
-              .setAlpha(1);
-    messageText.setText(shotResultMessage)
-               .setFill(color)
-               .setAlpha(1);
+    function getAccuracy(){
+        const x=shotMeterPointer.x;
+        const pz=accuracyZonePerfect;
+        const gz=accuracyZoneGood;
 
-    // и через 200ms оба исчезают за 200ms
-    this.tweens.add({
-        targets: [pointsText, messageText],
-        alpha: 0,
-        duration: 200,
-        delay: 200
-    });
-}
+        if(x > pz.x - pz.width / 2 && x < pz.x + pz.width / 2) return 'perfect';
 
-    function getAccuracy(){const x=shotMeterPointer.x,pz=accuracyZonePerfect,gz=accuracyZoneGood;if(x>pz.x-pz.width/2&&x<pz.x+pz.width/2)return'perfect';if(x>gz.x-gz.width/2&&x<gz.x+gz.width/2)return Phaser.Math.Between(1,100)<=20?'lucky':'good';return'miss';}
-    function countdown(){if(gameEnded||!started)return;timer--;updateInfoBar.call(this);if(timer<=0)endGame.call(this);}
-    function startClutchMode(){isClutchMode=true;canStartClutch=false;justExitedClutch=false;infoBarGraphics.clear().fillStyle(0xFF0000,1).fillRect(0,0,config.width,80);clutchTime=7;if(clutchTimerEvent)clutchTimerEvent.remove();clutchTimerEvent=this.time.addEvent({delay:1000,callback:updateClutchTime,callbackScope:this,loop:true});}
-    function updateClutchTime(){clutchTime--;timerText.setText(clutchTime);if(clutchTime<=0)endClutchMode.call(this);}
-    function endClutchMode(){isClutchMode=false;canStartClutch=true;justExitedClutch=true;if(clutchTimerEvent){clutchTimerEvent.remove();clutchTimerEvent=null;}infoBarGraphics.clear().fillStyle(0x333333,1).fillRect(0,0,config.width,80);timerText.alpha=1;}
-    function applyMeterOnTop(){shotMeterBar.y=config.height-200;shotMeterPointer.y=shotMeterBar.y-14;accuracyZonePerfect.y=shotMeterBar.y;accuracyZoneGood.y=shotMeterBar.y;}
-    function endGame(){this.add.rectangle(0,0,config.width,config.height,0x000000,0.85).setOrigin(0).setDepth(10000);gameEnded=true;updateInfoBar.call(this);messageText.setText(getEndGameMessage()).setFill('#fff').setAlpha(1).setWordWrapWidth(config.width-40);const y=config.height/2+100;this.add.text(config.width/2,y,'Restart',{fontSize:'32px',fill:'#fff',backgroundColor:'#007bff',padding:{x:20,y:10},fontFamily:'"Special Gothic Expanded One",monospace',align:'center'}).setOrigin(0.5).setDepth(10001).setInteractive().on('pointerdown',()=>{skipIntro=true;this.scene.restart();});this.add.text(config.width/2,y+60,'Share Score',{fontSize:'32px',fill:'#fff',backgroundColor:'#28a745',padding:{x:20,y:10},fontFamily:'"Special Gothic Expanded One",monospace',align:'center'}).setOrigin(0.5).setDepth(10001).setInteractive().on('pointerdown',()=>alert(`I scored ${score} points!`));}
-    function getEndGameMessage(){if(score<10)return'Stick to layups.';if(score<20)return'Bench warmer energy.';if(score<40)return'Cooking out here!';return'Unstoppable mode activated!';}
-    function updateInfoBar(){const t=timer<10?`:0${timer}`:`:${timer}`;timerText.setText(started?(isClutchMode?`${clutchTime}`:t):t);scoreText.setText(score);streakText.setText(`x${madeShotsInRow||0}`);}
+        if(x > gz.x - gz.width / 2 && x < gz.x + gz.width / 2) {
+            return Phaser.Math.Between(1, 100) <= 20 ? 'lucky' : 'good';
+        }
+
+        return 'miss';
+    }
+
+    function countdown(){
+        if(gameEnded||!started)return;
+        timer--;
+        updateInfoBar.call(this);
+        if(timer<=0)endGame.call(this);
+    }
+
+    function startClutchMode(){
+        isClutchMode=true;
+        canStartClutch=false;
+        justExitedClutch=false;
+        infoBarGraphics.clear().fillStyle(0xFF0000,1).fillRect(0,0,config.width,80);
+        clutchTime=7;
+        if(clutchTimerEvent)clutchTimerEvent.remove();
+        clutchTimerEvent=this.time.addEvent({delay:1000,callback:updateClutchTime,callbackScope:this,loop:true});
+        timerText.setTint(0xFFFFFF);
+    }
+
+    function updateClutchTime(){
+        clutchTime--;
+        timerText.setText(clutchTime);
+        if(clutchTime<=0)endClutchMode.call(this);
+        if (clutchTime <= 3) {
+             timerText.setAlpha(clutchTime % 2 === 0 ? 1 : 0.5);
+        }
+    }
+
+    function endClutchMode(){
+        isClutchMode=false;
+        canStartClutch=true;
+        justExitedClutch=true;
+        if(clutchTimerEvent){
+            clutchTimerEvent.remove();
+            clutchTimerEvent=null;
+        }
+        infoBarGraphics.clear().fillStyle(0x333333,1).fillRect(0,0,config.width,80);
+        timerText.setTint(0xFFFFFF);
+        timerText.setAlpha(1);
+        updateInfoBar.call(this);
+    }
+
+    function endGame(){
+        this.add.rectangle(0,0,config.width,config.height,0x000000,0.85).setOrigin(0).setDepth(10000);
+        gameEnded=true;
+        updateInfoBar.call(this);
+
+        infoBarGraphics.setVisible(false);
+        scoreText.setVisible(false);
+        this.children.each((child) => {
+            if (child instanceof Phaser.GameObjects.Text && child.y < 80) {
+                child.setVisible(false);
+            }
+        });
+
+        const finalScoreText = this.add.text(config.width/2, config.height/2 - 150, `Final Score: ${score}`, {
+            fontSize:'64px',
+            fill:'#fff',
+            fontFamily:'"Special Gothic Expanded One",monospace',
+            align:'center'
+        }).setOrigin(0.5).setDepth(10001);
+
+
+        messageText.setText(getEndGameMessage())
+                   .setFill('#fff')
+                   .setAlpha(1)
+                   .setWordWrapWidth(config.width-80)
+                   .setOrigin(0.5)
+                   .setPosition(config.width/2, config.height/2 - 50)
+                   .setDepth(10001);
+
+
+        const y=config.height/2+50;
+        this.add.text(config.width/2,y,'Restart',{fontSize:'32px',fill:'#fff',backgroundColor:'#007bff',padding:{x:20,y:10},fontFamily:'"Special Gothic Expanded One",monospace',align:'center'})
+            .setOrigin(0.5)
+            .setDepth(10001)
+            .setInteractive()
+            .on('pointerdown',()=>{skipIntro=true;this.scene.restart();});
+
+        this.add.text(config.width/2,y+60,'Share Score',{fontSize:'32px',fill:'#fff',backgroundColor:'#28a745',padding:{x:20,y:10},fontFamily:'"Special Gothic Expanded One",monospace',align:'center'})
+            .setOrigin(0.5)
+            .setDepth(10001)
+            .setInteractive()
+            .on('pointerdown',()=> {
+                const shareText = `I scored ${score} points in Perfect Shot! Can you beat my score? #PerfectShotGame`;
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Perfect Shot Score',
+                        text: shareText,
+                        url: window.location.href
+                    }).catch((error) => console.log('Error sharing', error));
+                } else {
+                    alert(shareText);
+                }
+            });
+    }
+
+    function getEndGameMessage(){
+        if(score<0)return'Did you even try?';
+        if(score<10)return'Stick to layups.';
+        if(score<20)return'Bench warmer energy.';
+        if(score<40)return'Cooking out here!';
+        if(score<60)return'Heat Check!';
+        if(score<80)return'Pure Shooter!';
+        return'Legendary!';
+    }
+
+    function updateInfoBar(){
+        let timeDisplay;
+        if (started) {
+             timeDisplay = isClutchMode ? `${clutchTime}` : (timer < 10 ? `:0${timer}` : `:${timer}`);
+        } else {
+             timeDisplay = `:60`;
+        }
+        timerText.setText(timeDisplay);
+        scoreText.setText(score);
+        streakText.setText(`x${madeShotsInRow || 0}`);
+    }
+
 });
