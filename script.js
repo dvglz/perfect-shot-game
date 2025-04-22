@@ -200,53 +200,70 @@ document.addEventListener('DOMContentLoaded', function () {
             overlayGroup = [];
         }
 
+        // Controls (Кнопка SHOOT)
         const shootButtonWidth = meterBarWidth;
         const shootButtonHeight = 75;
         const buttonMeterGap = 20;
-        const shootButtonY = meterY + meterBarHeight / 2 + buttonMeterGap; // Y для ВЕРХНЕГО края
-        const shootButtonX_LeftEdge = config.width / 2 - shootButtonWidth / 2; // X для ЛЕВОГО края
 
-        // Создаем графику кнопки
-        const shootBtnGraphic=this.add.graphics({fillStyle:{color:0xF44336}}).setDepth(1.3);
-        shootBtnGraphic.fillRoundedRect(shootButtonX_LeftEdge, shootButtonY, shootButtonWidth, shootButtonHeight, 10);
+        // >>> НОВАЯ ЛОГИКА ПОЗИЦИОНИРОВАНИЯ: РАССЧИТЫВАЕМ ЦЕНТР КНОПКИ <<<
+        // Y-координата ЦЕНТРА кнопки: низ шкалы + отступ + половина высоты кнопки
+        const shootButtonCenterX = config.width / 2;
+        const shootButtonCenterY = meterY + meterBarHeight / 2 + buttonMeterGap + shootButtonHeight / 2;
 
-        // Создаем текстовый объект кнопки
-        const shootTextY = shootButtonY + shootButtonHeight / 2; // Центр текста по Y
-        const shootText = this.add.text(config.width/2, shootTextY,'SHOOT',{fontSize:'45px',fill:'#ffffff',fontFamily:'"Special Gothic Expanded One",monospace'}).setOrigin(0.5).setDepth(1.4);
-
-        // >>> КОРРЕКТИРОВКА: ДЕЛАЕМ ИНТЕРАКТИВНУЮ ОБЛАСТЬ БОЛЬШЕ <<<
-        const interactiveAreaPadding = 15; // Добавляем по 15px с каждой стороны (30px всего к ширине/высоте)
-        const interactiveAreaX = shootButtonX_LeftEdge - interactiveAreaPadding;
-        const interactiveAreaY = shootButtonY - interactiveAreaPadding;
+        // Отступ для интерактивной области (с каждой стороны)
+        const interactiveAreaPadding = 15;
+        // Рассчитываем увеличенную ширину и высоту интерактивной области
         const interactiveAreaWidth = shootButtonWidth + interactiveAreaPadding * 2;
         const interactiveAreaHeight = shootButtonHeight + interactiveAreaPadding * 2;
 
 
+        // Создаем ГРАФИКУ кнопки. Позиционируем ГРАФИЧЕСКИЙ ОБЪЕКТ по центру кнопки.
+        const shootBtnGraphic = this.add.graphics({ fillStyle: { color: 0xF44336 } }).setDepth(1.3);
+        shootBtnGraphic.setPosition(shootButtonCenterX, shootButtonCenterY); // Устанавливаем позицию ОБЪЕКТА по центру кнопки
+        // Рисуем прямоугольник относительно ПОЗИЦИИ ОБЪЕКТА (которая сейчас центр кнопки)
+        // Поэтому прямоугольник нужно рисовать с центром в (0,0) относительно shootBtnGraphic.x/y
+        shootBtnGraphic.fillRoundedRect(-shootButtonWidth / 2, -shootButtonHeight / 2, shootButtonWidth, shootButtonHeight, 10);
+
+
+        // Создаем ТЕКСТОВЫЙ объект кнопки. Позиционируем его по центру кнопки.
+        const shootText = this.add.text(shootButtonCenterX, shootButtonCenterY, 'SHOOT', {
+            fontSize: '45px',
+            fill: '#ffffff',
+            fontFamily: '"Special Gothic Expanded One",monospace',
+            align: 'center'
+        }).setOrigin(0.5).setDepth(1.4); // Origin(0.5) уже центрирует текст относительно его X/Y
+
+
+        // Создаем НЕВИДИМЫЙ ПРЯМОУГОЛЬНИК ДЛЯ ИНТЕРАКТИВНОСТИ. Позиционируем его по центру кнопки.
         const shootBtnInteractiveArea = this.add.rectangle(
-            interactiveAreaX, // Используем скорректированный X верхнего левого угла
-            interactiveAreaY,          // Используем скорректированный Y верхнего левого угла
+            shootButtonCenterX, // Используем рассчитанный центр X
+            shootButtonCenterY, // Используем рассчитанный центр Y
             interactiveAreaWidth,   // Используем увеличенную ширину
             interactiveAreaHeight,  // Используем увеличенную высоту
             0xffffff,
             0
         )
-        .setOrigin(0, 0) // Origin (0,0) соответствует X/Y как верхнему левому углу
-        .setDepth(1.5) // Глубина выше графики и текста кнопки, чтобы быть "сверху" для кликов
+        .setOrigin(0.5) // >>> Устанавливаем Origin (0.5) <<< чтобы он соответствовал координатам Центра X/Y
+        .setDepth(1.5) // Глубина выше графики и текста кнопки
         .setInteractive()
         .on('pointerdown', function() {
             shoot.call(this); // 'this' внутри обработчика - это сцена
         }, this); // Передаем контекст сцены ('this')
 
-        // >>> КОНЕЦ КОРРЕКТИРОВКИ ИНТЕРАКТИВНОЙ ОБЛАСТИ <<<
+        // >>> КОНЕЦ СКОРРЕКТИРОВАННОЙ ЛОГИКИ <<<
+
+        // Теперь переменные shootBtnGraphic, shootText, shootBtnInteractiveArea доступны
+        // Если вы хотите добавить эффект нажатия позже, используйте эти переменные.
+        // В этой версии эффекта нажатия нет, только кликабельность.
 
 
         restartGame=()=>{skipIntro=true;this.scene.restart();};
         startNewRound.call(this);
-    }
+        }
 
     function update(){
         if(!started||gameEnded)return;
-        const speed=baseMeterSpeed*(isClutchMode?2.0:1.2);
+        const speed=baseMeterSpeed*(isClutchMode?2.8:1.8);
         shotMeterPointer.x+=shotMeterDirection*speed;
         const half=meterBarWidth/2;
         const meterCenterX = shotMeterBar.x;
@@ -282,13 +299,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const meterY = config.height - 150; // Y position for the zones (matches meter bar Y)
 
         // 0x00FF00 – bright green, alpha 0.8
-        accuracyZonePerfect = this.add.rectangle(config.width/2, meterY, perfectW, meterBarHeight, 0x00FF00)
+        accuracyZonePerfect = this.add.rectangle(config.width/2, meterY, perfectW, meterBarHeight, 0x006D00)
             .setOrigin(0.5)
-            .setAlpha(0.8)
+            .setAlpha(1)
             .setDepth(1.2); // Zone depth 1.2
 
         // 0x88FF88 – light green, alpha 0.6
-        accuracyZoneGood = this.add.rectangle(config.width/2, meterY, goodW, meterBarHeight, 0x88FF88)
+        accuracyZoneGood = this.add.rectangle(config.width/2, meterY, goodW, meterBarHeight, 0x006D00)
             .setOrigin(0.5)
             .setAlpha(0.6)
             .setDepth(1.2); // Zone depth 1.2
