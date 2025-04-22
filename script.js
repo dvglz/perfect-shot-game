@@ -91,8 +91,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let overlayGroup = [];
     let shotResultMessage = '';
 
-    const playerBaseDistanceFromBottom = 330;
-    const playerJumpHeight = 5;
+    const playerBaseDistanceFromBottom = 200;
+    const playerJumpHeight = 15;
 
     let loaderElement;
     let loaderBar;
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ball = this.add.circle(config.width/2,700,35,0xffa500).setVisible(false).setDepth(0.6);
 
         const playerBaseY = config.height - playerBaseDistanceFromBottom;
-        playerSprite = this.add.sprite(config.width/2, playerBaseY,'playerSilhouette1').setScale(0.4).setDepth(0.7);
+        playerSprite = this.add.sprite(config.width/2, playerBaseY,'playerSilhouette1').setScale(0.6).setDepth(0.7);
 
         pointsText = this.add.text(config.width/2,config.height/2-80,'',{fontSize:'48px',fill:'#fff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:config.width-40}}).setOrigin(0.5).setDepth(2000).setAlpha(0);
         messageText= this.add.text(config.width/2,config.height/2-20,'',{fontSize:'36px',fill:'#fff',fontFamily:'"Special Gothic Expanded One",monospace',align:'center',wordWrap:{width:config.width-40}}).setOrigin(0.5).setDepth(2000).setAlpha(0);
@@ -205,60 +205,51 @@ document.addEventListener('DOMContentLoaded', function () {
         const shootButtonHeight = 75;
         const buttonMeterGap = 20;
 
-        // >>> НОВАЯ ЛОГИКА ПОЗИЦИОНИРОВАНИЯ: РАССЧИТЫВАЕМ ЦЕНТР КНОПКИ <<<
-        // Y-координата ЦЕНТРА кнопки: низ шкалы + отступ + половина высоты кнопки
         const shootButtonCenterX = config.width / 2;
         const shootButtonCenterY = meterY + meterBarHeight / 2 + buttonMeterGap + shootButtonHeight / 2;
 
-        // Отступ для интерактивной области (с каждой стороны)
         const interactiveAreaPadding = 15;
-        // Рассчитываем увеличенную ширину и высоту интерактивной области
         const interactiveAreaWidth = shootButtonWidth + interactiveAreaPadding * 2;
         const interactiveAreaHeight = shootButtonHeight + interactiveAreaPadding * 2;
 
-
-        // Создаем ГРАФИКУ кнопки. Позиционируем ГРАФИЧЕСКИЙ ОБЪЕКТ по центру кнопки.
         const shootBtnGraphic = this.add.graphics({ fillStyle: { color: 0xF44336 } }).setDepth(1.3);
-        shootBtnGraphic.setPosition(shootButtonCenterX, shootButtonCenterY); // Устанавливаем позицию ОБЪЕКТА по центру кнопки
-        // Рисуем прямоугольник относительно ПОЗИЦИИ ОБЪЕКТА (которая сейчас центр кнопки)
-        // Поэтому прямоугольник нужно рисовать с центром в (0,0) относительно shootBtnGraphic.x/y
+        shootBtnGraphic.setPosition(shootButtonCenterX, shootButtonCenterY);
         shootBtnGraphic.fillRoundedRect(-shootButtonWidth / 2, -shootButtonHeight / 2, shootButtonWidth, shootButtonHeight, 10);
 
-
-        // Создаем ТЕКСТОВЫЙ объект кнопки. Позиционируем его по центру кнопки.
         const shootText = this.add.text(shootButtonCenterX, shootButtonCenterY, 'SHOOT', {
             fontSize: '45px',
             fill: '#ffffff',
             fontFamily: '"Special Gothic Expanded One",monospace',
             align: 'center'
-        }).setOrigin(0.5).setDepth(1.4); // Origin(0.5) уже центрирует текст относительно его X/Y
+        }).setOrigin(0.5).setDepth(1.4);
 
-
-        // Создаем НЕВИДИМЫЙ ПРЯМОУГОЛЬНИК ДЛЯ ИНТЕРАКТИВНОСТИ. Позиционируем его по центру кнопки.
         const shootBtnInteractiveArea = this.add.rectangle(
-            shootButtonCenterX, // Используем рассчитанный центр X
-            shootButtonCenterY, // Используем рассчитанный центр Y
-            interactiveAreaWidth,   // Используем увеличенную ширину
-            interactiveAreaHeight,  // Используем увеличенную высоту
+            shootButtonCenterX,
+            shootButtonCenterY,
+            interactiveAreaWidth,
+            interactiveAreaHeight,
             0xffffff,
             0
         )
-        .setOrigin(0.5) // >>> Устанавливаем Origin (0.5) <<< чтобы он соответствовал координатам Центра X/Y
-        .setDepth(1.5) // Глубина выше графики и текста кнопки
+        .setOrigin(0.5)
+        .setDepth(1.5)
         .setInteractive()
         .on('pointerdown', function() {
-            shoot.call(this); // 'this' внутри обработчика - это сцена
-        }, this); // Передаем контекст сцены ('this')
-
-        // >>> КОНЕЦ СКОРРЕКТИРОВАННОЙ ЛОГИКИ <<<
-
-        // Теперь переменные shootBtnGraphic, shootText, shootBtnInteractiveArea доступны
-        // Если вы хотите добавить эффект нажатия позже, используйте эти переменные.
-        // В этой версии эффекта нажатия нет, только кликабельность.
+            console.log('SHOOT button pressed!'); // Added log
+            shoot.call(this);
+        }, this);
 
 
         restartGame=()=>{skipIntro=true;this.scene.restart();};
         startNewRound.call(this);
+
+        // >>> ИЗМЕНЕННЫЙ ОБРАБОТЧИК КЛАВИШИ SPACE <<<
+        this.input.keyboard.on('keydown-SPACE', function() {
+            console.log('SPACE key pressed!'); // Added log
+            shoot.call(this); // Call shoot with the scene context
+        }, this); // Pass the scene context
+        // >>> КОНЕЦ ИЗМЕНЕНИЯ <<<
+
         }
 
     function update(){
@@ -273,12 +264,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function startNewRound(){
         ball.setVisible(false);
-        if(!playerList.length)return; // Should not happen if game state is managed correctly, but good safeguard
+        if(!playerList.length)return;
         currentPlayer=Phaser.Utils.Array.GetRandom(playerList);
         baseMeterSpeed=Phaser.Math.FloatBetween(2.7,3.3)*1.25;
         const key=currentPlayer.name.toLowerCase().replace(/[^a-z0-9]/g,'');
         playerSprite.setTexture(this.textures.exists(key)?key:'playerSilhouette1');
-        updateAccuracyZones.call(this,currentPlayer); // Ensure zones are created/updated
+        updateAccuracyZones.call(this,currentPlayer);
         if(!isClutchMode&&canStartClutch&&!justExitedClutch&&Phaser.Math.Between(1,100)<=15)startClutchMode.call(this);
         justExitedClutch=false;
     }
@@ -298,25 +289,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const meterY = config.height - 150; // Y position for the zones (matches meter bar Y)
 
-        // 0x00FF00 – bright green, alpha 0.8
         accuracyZonePerfect = this.add.rectangle(config.width/2, meterY, perfectW, meterBarHeight, 0x006D00)
             .setOrigin(0.5)
             .setAlpha(1)
-            .setDepth(1.2); // Zone depth 1.2
+            .setDepth(1.2);
 
-        // 0x88FF88 – light green, alpha 0.6
         accuracyZoneGood = this.add.rectangle(config.width/2, meterY, goodW, meterBarHeight, 0x006D00)
             .setOrigin(0.5)
             .setAlpha(0.6)
-            .setDepth(1.2); // Zone depth 1.2
+            .setDepth(1.2);
     }
 
     function shoot() {
-        console.log('SHOOT button pressed or SPACE key down'); // Добавьте этот лог
-    if (gameEnded || ball.visible || !started) {
-        console.log('Shoot blocked! Conditions:', {gameEnded, ballVisible: ball.visible, started}); // Добавьте этот лог
-        return;
-    }
+        console.log('SHOOT function entered.'); // Added log
+
+        // --- BLOCKING CONDITION ---
+        if (gameEnded || ball.visible || !started) {
+            console.log('Shoot blocked! Conditions:', {gameEnded, ballVisible: ball.visible, started}); // Added log
+            return;
+        }
+        console.log('Shoot is NOT blocked. Proceeding...'); // Added log
+        // --- END BLOCKING CONDITION ---
+
 
         const playerBaseY = config.height - playerBaseDistanceFromBottom;
         this.tweens.add({
@@ -347,31 +341,31 @@ document.addEventListener('DOMContentLoaded', function () {
         const baseDuration = 400;
         const hoopCenterX = config.width / 2;
         const hoopCenterY = backboard.y - 30;
-        const hoopZoneRadius = 40; // Radius around hoop center miss should avoid
+        const hoopZoneRadius = 40;
 
         if (!miss) {
             targetX = hoopCenterX + (shotMeterPointer.x - config.width / 2) * 0.05;
             targetY = hoopCenterY;
             duration = baseDuration;
         } else {
-            const missType = Phaser.Math.RND.integerInRange(1, 4); // 1: Short, 2: Long, 3: Side, 4: Backboard
+            const missType = Phaser.Math.RND.integerInRange(1, 4);
             duration = baseDuration + Phaser.Math.RND.integerInRange(-50, 100);
 
             switch (missType) {
-                case 1: // Short / Under hoop
+                case 1:
                     targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-60, 60);
                     targetY = hoopCenterY + Phaser.Math.RND.integerInRange(hoopZoneRadius, 100);
                     break;
-                case 2: // Long / Overshoot
+                case 2:
                     targetX = hoopCenterX + Phaser.Math.RND.integerInRange(-80, 80);
                     targetY = hoopCenterY - Phaser.Math.RND.integerInRange(hoopZoneRadius + 20, 150);
                     break;
-                case 3: // Wide (side miss)
+                case 3:
                     const side = Phaser.Math.RND.pick([-1, 1]);
                     targetX = hoopCenterX + side * Phaser.Math.RND.integerInRange(hoopZoneRadius * 1.5, 200);
                     targetY = hoopCenterY + Phaser.Math.RND.integerInRange(-20, 20);
                     break;
-                case 4: // Backboard miss (away from hoop)
+                case 4:
                     let attempts = 0;
                     let distToHoopCenter;
                     do {
