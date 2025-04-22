@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const config = {
         type: Phaser.CANVAS,
         width: 600,
-        height: 1200,
+        height: 1000,
         parent: 'game-container',
         backgroundColor: '#242424',
         scene: { preload, create, update },
@@ -70,7 +70,59 @@ document.addEventListener('DOMContentLoaded', function () {
     let overlayGroup = [];
     let shotResultMessage = '';
 
-    function preload() {
+     // Добавьте ссылки на элементы лоадера в Globals (или получите их в preload/create)
+     let loaderElement;
+     let loaderBar;
+     let loaderPercentText;
+ 
+     function preload() {
+        console.log('*** Phaser preload() running ***');
+    
+        // Получаем элементы лоадера из DOM
+        loaderElement = document.getElementById('loader');
+        loaderBar = document.getElementById('loader-bar');
+        loaderPercentText = document.getElementById('loader-percent'); // Этот элемент HTML
+    
+        const gameCanvas = document.querySelector('#game-container canvas'); // Получаем канвас
+    
+        // Скрываем канвас в начале preload (если CSS не сработал или на всякий случай)
+         if (gameCanvas) {
+            gameCanvas.style.visibility = 'hidden';
+         }
+         // Показываем лоадер
+         if (loaderElement) {
+            // Используем flex, как в CSS, чтобы лоадер был видим
+            loaderElement.style.display = 'flex';
+         }
+    
+    
+        // Добавляем обработчики событий загрузки Phaser
+        this.load.on('progress', function (value) {
+            // value - это число от 0 до 1
+            const percent = Math.round(value * 100) + '%';
+    
+            if (loaderBar) {
+                loaderBar.style.width = percent;
+            }
+            if (loaderPercentText) {
+                // ИСПОЛЬЗУЕМ textContent для HTML-элемента
+                loaderPercentText.textContent = percent; // <-- ИСПРАВЛЕНО ЗДЕСЬ
+            }
+        });
+    
+        this.load.on('complete', function () {
+            console.log('*** Phaser preload() complete ***');
+            // Загрузка завершена, скрываем лоадер и показываем канвас
+             if (loaderElement) {
+                loaderElement.style.display = 'none'; // Скрываем лоадер
+             }
+             if (gameCanvas) {
+                gameCanvas.style.visibility = 'visible'; // Показываем канвас
+             }
+        });
+    
+    
+        // --- ВАШИ ЗАГРУЖАЕМЫЕ АССЕТЫ ---
         this.load.image('backboard', 'images/backboard.png');
         this.load.image('arrow', 'images/arrow.png');
         this.load.image('playerSilhouette1', 'images/playerSilhouette1.png');
@@ -78,12 +130,21 @@ document.addEventListener('DOMContentLoaded', function () {
             const key = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
             this.load.image(key, `images/players/${p.image}`);
         });
-    }
+        // --- КОНЕЦ ВАШИХ ЗАГРУЖАЕМЫХ АССЕТОВ ---
+    } 
 
     function create() {
         console.log('*** Phaser create() running ***');
         console.log('Canvas element:', this.game.canvas);
         console.log('Canvas resolution:', this.game.canvas.width, '×', this.game.canvas.height);
+        if (loaderElement) {
+            loaderElement.style.display = 'none';
+         }
+         const gameCanvas = document.querySelector('#game-container canvas');
+         if (gameCanvas) {
+            gameCanvas.style.visibility = 'visible';
+         }
+
         // UI Bar and info
         this.add.rectangle(0, 0, config.width, config.height, 0x242424).setOrigin(0); // Actual game background - should draw over the first debug red rect
         infoBarGraphics = this.add.graphics().fillStyle(0x333333,1).fillRect(0,0,config.width,80).setDepth(1); // Added depth
