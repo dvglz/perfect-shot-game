@@ -13,15 +13,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* Full viewport height */
+            height: 100vh; /* Full viewport height */
             overflow: hidden; /* Prevent scrolling */
-            position:fixed;
         }
 
         #game-container {
             width: 100%; /* Take up available width */
             max-width: 600px; /* Limit on larger screens */
-            /* height: 100%; Take up available height */
+            height: 100%; /* Take up available height */
             min-height: 700px; /* Limit on larger screens */
             margin: auto; /* Center horizontally */
             position: relative;
@@ -29,9 +28,6 @@
 
         #game-container canvas {
             display: block; /* Ensure canvas takes up full container */
-            visibility: hidden;
-            width:100%;
-            height: 100%;
         }
 
         /* --- Стили для Лоадера --- */
